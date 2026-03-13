@@ -6,15 +6,8 @@ import { FeedCard } from "../feed/FeedCard";
 import { FeedCardSkeleton } from "../feed/FeedCardSkeleton";
 
 export function Timeline(): React.ReactElement {
-  const {
-    feeds,
-    userName,
-    isLoading,
-    isLoadingMore,
-    error,
-    hasMore,
-    loadMore,
-  } = useFeeds();
+  const { feeds, userName, isLoading, isLoadingMore, error, hasMore, loadMore } =
+    useFeeds();
 
   const parentRef = useRef<HTMLDivElement>(null);
 
@@ -40,71 +33,68 @@ export function Timeline(): React.ReactElement {
   }, [items, feeds.length, hasMore, isLoadingMore, loadMore]);
 
   return (
-    <Box bg="bg.subtle" minH="100vh">
-      <Container maxW="container.md" py={4}>
-        <Flex
-          justify="space-between"
-          py={3}
-          mb={4}
-          top={0}
-          bg="bg.subtle"
-          zIndex={10}
-        >
+    <Box ref={parentRef} bg="bg.subtle" height="100vh" overflow="auto">
+      <Container maxW="container.sm" py={3}>
+        <Flex justify="flex-end" align="center">
           {userName !== "" && (
             <Text color="fg.muted" fontSize="sm">
               {userName}
             </Text>
           )}
         </Flex>
+      </Container>
 
-        {error !== null && (
+      {error !== null && (
+        <Container maxW="container.sm" py={4}>
           <Alert.Root status="error">
             <Alert.Indicator />
             <Alert.Title>{error}</Alert.Title>
           </Alert.Root>
-        )}
+        </Container>
+      )}
 
-        {isLoading ? (
+      {isLoading ? (
+        <Container maxW="container.sm" py={4}>
           <Box display="flex" flexDirection="column" gap={3}>
             {[...Array(3)].map((_, i) => (
               <FeedCardSkeleton key={i} />
             ))}
           </Box>
-        ) : (
-          <Box ref={parentRef} height="calc(100vh - 120px)" overflow="auto">
-            <Box
-              height={`${virtualizer.getTotalSize()}px`}
-              width="100%"
-              position="relative"
-            >
-              {items.map((virtualItem) => {
-                const isLoaderRow = virtualItem.index >= feeds.length;
-                const feed = feeds[virtualItem.index];
+        </Container>
+      ) : (
+        <Box
+          height={`${virtualizer.getTotalSize()}px`}
+          width="100%"
+          position="relative"
+        >
+          {items.map((virtualItem) => {
+            const isLoaderRow = virtualItem.index >= feeds.length;
+            const feed = feeds[virtualItem.index];
 
-                return (
-                  <Box
-                    key={virtualItem.key}
-                    data-index={virtualItem.index}
-                    ref={virtualizer.measureElement}
-                    position="absolute"
-                    top={0}
-                    left={0}
-                    width="100%"
-                    transform={`translateY(${virtualItem.start}px)`}
-                    pb={3}
-                  >
-                    {isLoaderRow ? (
-                      <FeedCardSkeleton />
-                    ) : feed !== undefined ? (
-                      <FeedCard feed={feed} />
-                    ) : null}
-                  </Box>
-                );
-              })}
-            </Box>
-          </Box>
-        )}
-      </Container>
+            return (
+              <Box
+                key={virtualItem.key}
+                data-index={virtualItem.index}
+                ref={virtualizer.measureElement}
+                position="absolute"
+                top={0}
+                left={0}
+                width="100%"
+                transform={`translateY(${virtualItem.start}px)`}
+                pb={3}
+              >
+                <Container maxW="container.sm">
+                  {isLoaderRow ? (
+                    <FeedCardSkeleton />
+                  ) : feed !== undefined ? (
+                    <FeedCard feed={feed} />
+                  ) : null}
+                </Container>
+              </Box>
+            );
+          })}
+        </Box>
+      )}
     </Box>
   );
 }
