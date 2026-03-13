@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "outDir": "dist",
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "erasableSyntaxOnly": false,
+    "types": ["vitest/globals", "@testing-library/jest-dom", "chrome"]
+  },
+  "include": ["src"],
+  "extends": [
+    "@tsconfig/vite-react/tsconfig.json",
+    "@tsconfig/strictest/tsconfig.json"
+  ]
+}
