@@ -8,6 +8,7 @@ import {
   VStack,
   SimpleGrid,
 } from "@chakra-ui/react";
+import Markdown from "react-markdown";
 import type { Feed } from "../../types";
 
 interface FeedCardProps {
@@ -72,14 +73,13 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
                   >
                     {sub.key}
                   </Text>
-                  <Text
+                  <Box
                     fontSize="sm"
                     color="gray.700"
-                    whiteSpace="pre-wrap"
-                    wordBreak="break-word"
+                    className="markdown-content"
                   >
-                    {sub.value}
-                  </Text>
+                    <Markdown>{sub.value}</Markdown>
+                  </Box>
                 </Box>
               );
             })}
@@ -87,9 +87,9 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
         )}
 
         {data.message !== null && (
-          <Text fontSize="sm" color="gray.700" whiteSpace="pre-wrap">
-            {data.message}
-          </Text>
+          <Box fontSize="sm" color="gray.700" className="markdown-content">
+            <Markdown>{data.message}</Markdown>
+          </Box>
         )}
 
         {data.apply !== null && data.apply.images.length > 0 && (
@@ -112,6 +112,19 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
               />
             ))}
           </SimpleGrid>
+        )}
+
+        {data.read.count > 0 && (
+          <Text
+            mt={4}
+            pt={3}
+            borderTopWidth="1px"
+            borderColor="gray.200"
+            fontSize="xs"
+            color="gray.500"
+          >
+            {data.read.count}人が閲覧
+          </Text>
         )}
       </Card.Body>
     </Card.Root>

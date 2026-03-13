@@ -5,6 +5,8 @@ import { useFeeds } from "../../hooks/useFeeds";
 import { FeedCard } from "../feed/FeedCard";
 import { FeedCardSkeleton } from "../feed/FeedCardSkeleton";
 
+const CONTENT_WIDTH = "lg";
+
 export function Timeline(): React.ReactElement {
   const { feeds, userName, isLoading, isLoadingMore, error, hasMore, loadMore } =
     useFeeds();
@@ -34,7 +36,7 @@ export function Timeline(): React.ReactElement {
 
   return (
     <Box ref={parentRef} height="100vh" overflow="auto">
-      <Container maxW="container.sm" py={3}>
+      <Container maxW={CONTENT_WIDTH} py={3}>
         <Flex justify="flex-end" align="center">
           {userName !== "" && (
             <Text color="fg.muted" fontSize="sm">
@@ -45,7 +47,7 @@ export function Timeline(): React.ReactElement {
       </Container>
 
       {error !== null && (
-        <Container maxW="container.sm" py={4}>
+        <Container maxW={CONTENT_WIDTH} py={4}>
           <Alert.Root status="error">
             <Alert.Indicator />
             <Alert.Title>{error}</Alert.Title>
@@ -54,7 +56,7 @@ export function Timeline(): React.ReactElement {
       )}
 
       {isLoading ? (
-        <Container maxW="container.sm" py={4}>
+        <Container maxW={CONTENT_WIDTH} py={4}>
           <Box display="flex" flexDirection="column" gap={3}>
             {[...Array(3)].map((_, i) => (
               <FeedCardSkeleton key={i} />
@@ -83,7 +85,7 @@ export function Timeline(): React.ReactElement {
                 transform={`translateY(${virtualItem.start}px)`}
                 pb={3}
               >
-                <Container maxW="container.sm">
+                <Container maxW={CONTENT_WIDTH}>
                   {isLoaderRow ? (
                     <FeedCardSkeleton />
                   ) : feed !== undefined ? (

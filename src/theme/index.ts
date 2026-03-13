@@ -42,5 +42,46 @@ export const system = createSystem(defaultConfig, {
       bg: "white",
       color: "fg",
     },
+    ".markdown-content": {
+      "& p": {
+        marginBottom: "0.5em",
+        _last: { marginBottom: 0 },
+      },
+      "& ul, & ol": {
+        paddingLeft: "1.5em",
+        marginBottom: "0.5em",
+      },
+      "& li": {
+        listStyle: "inherit",
+      },
+      "& a": {
+        color: "#0000ee",
+        textDecoration: "underline",
+      },
+      "& code": {
+        bg: "gray.100",
+        px: "0.25em",
+        borderRadius: "sm",
+        fontSize: "0.9em",
+      },
+      "& pre": {
+        bg: "gray.100",
+        p: "0.5em",
+        borderRadius: "md",
+        overflowX: "auto",
+        marginBottom: "0.5em",
+      },
+      "& blockquote": {
+        borderLeftWidth: "3px",
+        borderLeftColor: "gray.300",
+        paddingLeft: "1em",
+        color: "gray.600",
+        marginBottom: "0.5em",
+      },
+      "& h1, & h2, & h3, & h4, & h5, & h6": {
+        fontWeight: "bold",
+        marginBottom: "0.5em",
+      },
+    },
   },
 });
