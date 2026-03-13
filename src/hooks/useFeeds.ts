@@ -1,34 +1,30 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { TunagAPI, TunagAPIError } from "../api/client";
 import type { Feed, FeedIndex } from "../types";
 
-export type FeedsState =
-  | { readonly status: "loading"; readonly message: string }
-  | { readonly status: "error"; readonly message: string }
-  | {
-      readonly status: "success";
-      readonly feeds: readonly Feed[];
-      readonly userName: string;
-    };
+const FEEDS_PER_PAGE = 5;
 
-function extractFeedIds(
-  grouped: FeedIndex,
-  maxPerGroup: number,
-  maxTotal: number,
-): readonly number[] {
+export type FeedsState = {
+  readonly feeds: readonly Feed[];
+  readonly userName: string;
+  readonly isLoading: boolean;
+  readonly isLoadingMore: boolean;
+  readonly error: string | null;
+  readonly hasMore: boolean;
+};
+
+function extractAllFeedIds(grouped: FeedIndex): number[] {
   const feedIds: number[] = [];
 
   for (const group of grouped) {
     if (group.grouped) {
-      const ids = group.feed_group.feed_ids.slice(0, maxPerGroup);
-      feedIds.push(...ids);
+      feedIds.push(...group.feed_group.feed_ids);
     } else {
       feedIds.push(group.feed.id);
     }
   }
 
-  const uniqueIds = [...new Set(feedIds)];
-  return uniqueIds.slice(0, maxTotal);
+  return [...new Set(feedIds)];
 }
 
 function sortFeedsByDate(feeds: readonly Feed[]): readonly Feed[] {
@@ -39,37 +35,46 @@ function sortFeedsByDate(feeds: readonly Feed[]): readonly Feed[] {
   });
 }
 
-export function useFeeds(): FeedsState {
+export function useFeeds(): FeedsState & { loadMore: () => void } {
   const [state, setState] = useState<FeedsState>({
-    status: "loading",
-    message: "初期化中...",
+    feeds: [],
+    userName: "",
+    isLoading: true,
+    isLoadingMore: false,
+    error: null,
+    hasMore: true,
   });
 
+  const apiRef = useRef<TunagAPI | null>(null);
+  const allFeedIdsRef = useRef<number[]>([]);
+  const loadedCountRef = useRef(0);
+  const isLoadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(true);
+
   useEffect(() => {
-    const load = async (): Promise<void> => {
+    const init = async (): Promise<void> => {
       try {
         const api = new TunagAPI();
         await api.init();
+        apiRef.current = api;
 
         const user = await api.getCurrentUser();
-
-        setState({ status: "loading", message: "フィード一覧を取得中..." });
-
         const grouped = await api.getGroupedFeeds();
-        const feedIds = extractFeedIds(grouped, 5, 30);
+        const feedIds = extractAllFeedIds(grouped);
+        allFeedIdsRef.current = feedIds;
+
+        const initialIds = feedIds.slice(0, FEEDS_PER_PAGE);
+        const feeds = await api.getFeeds(initialIds);
+        loadedCountRef.current = initialIds.length;
+        hasMoreRef.current = feedIds.length > FEEDS_PER_PAGE;
 
         setState({
-          status: "loading",
-          message: `${feedIds.length.toString()}件のフィードを取得中...`,
-        });
-
-        const feeds = await api.getFeeds(feedIds);
-        const sortedFeeds = sortFeedsByDate(feeds);
-
-        setState({
-          status: "success",
-          feeds: sortedFeeds,
+          feeds: sortFeedsByDate(feeds),
           userName: user.name,
+          isLoading: false,
+          isLoadingMore: false,
+          error: null,
+          hasMore: hasMoreRef.current,
         });
       } catch (err: unknown) {
         const message =
@@ -78,12 +83,87 @@ export function useFeeds(): FeedsState {
             : err instanceof Error
               ? err.message
               : "不明なエラーが発生しました";
-        setState({ status: "error", message });
+        setState((prev) => ({
+          ...prev,
+          isLoading: false,
+          error: message,
+        }));
+      }
+    };
+
+    void init();
+  }, []);
+
+  const loadMore = useCallback(() => {
+    if (
+      isLoadingMoreRef.current ||
+      !hasMoreRef.current ||
+      apiRef.current === null
+    ) {
+      return;
+    }
+
+    isLoadingMoreRef.current = true;
+    setState((prev) => ({ ...prev, isLoadingMore: true }));
+
+    const load = async (): Promise<void> => {
+      try {
+        const api = apiRef.current;
+        if (api === null) return;
+
+        const start = loadedCountRef.current;
+        const nextIds = allFeedIdsRef.current.slice(
+          start,
+          start + FEEDS_PER_PAGE,
+        );
+
+        if (nextIds.length === 0) {
+          hasMoreRef.current = false;
+          isLoadingMoreRef.current = false;
+          setState((prev) => ({
+            ...prev,
+            isLoadingMore: false,
+            hasMore: false,
+          }));
+          return;
+        }
+
+        const newFeeds = await api.getFeeds(nextIds);
+        loadedCountRef.current += nextIds.length;
+        hasMoreRef.current =
+          loadedCountRef.current < allFeedIdsRef.current.length;
+        isLoadingMoreRef.current = false;
+
+        setState((prev) => {
+          const existingIds = new Set(prev.feeds.map((f) => f.data.id));
+          const uniqueNewFeeds = newFeeds.filter(
+            (f) => !existingIds.has(f.data.id),
+          );
+          return {
+            ...prev,
+            feeds: [...prev.feeds, ...sortFeedsByDate(uniqueNewFeeds)],
+            isLoadingMore: false,
+            hasMore: hasMoreRef.current,
+          };
+        });
+      } catch (err: unknown) {
+        const message =
+          err instanceof TunagAPIError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "追加読み込みに失敗しました";
+        isLoadingMoreRef.current = false;
+        setState((prev) => ({
+          ...prev,
+          isLoadingMore: false,
+          error: message,
+        }));
       }
     };
 
     void load();
   }, []);
 
-  return state;
+  return { ...state, loadMore };
 }

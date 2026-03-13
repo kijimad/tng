@@ -34,7 +34,7 @@ export interface Substance {
   readonly id: number;
   readonly item_type: string;
   readonly key: string;
-  readonly value: string;
+  readonly value: string | null;
 }
 
 export interface FeedImage {

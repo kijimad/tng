@@ -53,7 +53,7 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
         {data.apply !== null && data.apply.substances.length > 0 && (
           <VStack gap={3} align="stretch">
             {data.apply.substances.map((sub) => {
-              if (sub.value.trim() === "") {
+              if (sub.value === null || sub.value.trim() === "") {
                 return null;
               }
               return (

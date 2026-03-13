@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
-  "name": "TUNAG Timeline",
+  "name": "tng",
   "version": "1.0.0",
-  "description": "TUNAG content in a scrollable timeline",
+  "description": "tng",
   "permissions": [],
   "host_permissions": ["https://tunag.jp/*"],
   "action": {
-    "default_title": "Open TUNAG Timeline"
+    "default_title": "tng"
   },
   "background": {
     "service_worker": "background.js",
