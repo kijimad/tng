@@ -33,7 +33,7 @@ export function Timeline(): React.ReactElement {
   }, [items, feeds.length, hasMore, isLoadingMore, loadMore]);
 
   return (
-    <Box ref={parentRef} bg="bg.subtle" height="100vh" overflow="auto">
+    <Box ref={parentRef} height="100vh" overflow="auto">
       <Container maxW="container.sm" py={3}>
         <Flex justify="flex-end" align="center">
           {userName !== "" && (

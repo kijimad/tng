@@ -18,7 +18,7 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
   const { data } = feed;
 
   return (
-    <Card.Root bg="white" shadow="sm" borderRadius="xl">
+    <Card.Root bgColor="gray.50">
       <Card.Body p={4}>
         <Flex gap={3} mb={3}>
           <Image

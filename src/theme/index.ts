@@ -39,7 +39,7 @@ export const system = createSystem(defaultConfig, {
   },
   globalCss: {
     body: {
-      bg: "bg.subtle",
+      bg: "white",
       color: "fg",
     },
   },
