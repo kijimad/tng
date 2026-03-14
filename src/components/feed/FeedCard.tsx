@@ -9,6 +9,7 @@ import {
   SimpleGrid,
 } from "@chakra-ui/react";
 import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { Feed } from "../../types";
 
 interface FeedCardProps {
@@ -78,7 +79,7 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
                     color="gray.700"
                     className="markdown-content"
                   >
-                    <Markdown>{sub.value}</Markdown>
+                    <Markdown remarkPlugins={[remarkGfm]}>{sub.value}</Markdown>
                   </Box>
                 </Box>
               );
@@ -88,7 +89,7 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
 
         {data.message !== null && (
           <Box fontSize="sm" color="gray.700" className="markdown-content">
-            <Markdown>{data.message}</Markdown>
+            <Markdown remarkPlugins={[remarkGfm]}>{data.message}</Markdown>
           </Box>
         )}
 
