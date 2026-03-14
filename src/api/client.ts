@@ -1,4 +1,4 @@
-import type { CurrentUser, Feed, FeedIndex, Session } from "../types";
+import type { FeedIndex, Session } from "../types";
 
 const API_BASE = "https://tunag.jp/api/v2" as const;
 
@@ -58,10 +58,6 @@ export class TunagAPI {
     return this.request<Session>("/sessions");
   }
 
-  async getCurrentUser(): Promise<CurrentUser> {
-    return this.request<CurrentUser>("/current_user");
-  }
-
   async getGroupedFeeds(
     position?: number,
     groupingId?: number,
@@ -77,14 +73,5 @@ export class TunagAPI {
     return this.request<FeedIndex>(
       `/feeds/grouped_index${query ? `?${query}` : ""}`,
     );
-  }
-
-  async getFeed(id: number): Promise<Feed> {
-    return this.request<Feed>(`/feeds/${id.toString()}`);
-  }
-
-  async getFeeds(ids: readonly number[]): Promise<readonly Feed[]> {
-    const results = await Promise.all(ids.map((id) => this.getFeed(id)));
-    return results;
   }
 }

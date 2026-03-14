@@ -1,4 +1,4 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { TunagAPI } from "../api/client";
 import type { Feed, FeedIndex } from "../types";
@@ -64,16 +64,6 @@ function extractFeedsFromIndex(index: FeedIndex): Feed[] {
     }
   }
   return feeds;
-}
-
-export function useCurrentUser() {
-  return useQuery({
-    queryKey: ["currentUser"],
-    queryFn: async () => {
-      const api = await getApi();
-      return api.getCurrentUser();
-    },
-  });
 }
 
 export function useFeeds() {

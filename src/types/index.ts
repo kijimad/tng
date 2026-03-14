@@ -15,12 +15,6 @@ export interface User {
   readonly standard: boolean;
 }
 
-export interface CurrentUser {
-  readonly id: number;
-  readonly name: string;
-  readonly email?: string;
-}
-
 export interface Menu {
   readonly id: number;
   readonly title: string;
