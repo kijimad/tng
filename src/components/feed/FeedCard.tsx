@@ -42,7 +42,12 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
               </Text>
             )}
           </Box>
-          <Text fontSize="xs" color="gray.400" flexShrink={0}>
+          <Text
+            fontSize="xs"
+            color="gray.400"
+            flexShrink={0}
+            title={data.created_at}
+          >
             {data.created_at_label}
           </Text>
         </Flex>
@@ -60,13 +65,7 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
                 return null;
               }
               return (
-                <Box
-                  key={sub.id}
-                  pb={3}
-                  borderBottomWidth="1px"
-                  borderColor="gray.100"
-                  _last={{ borderBottom: "none", pb: 0 }}
-                >
+                <Box key={sub.id}>
                   <Text
                     fontSize="xs"
                     fontWeight="semibold"
