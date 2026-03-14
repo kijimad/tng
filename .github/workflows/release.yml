@@ -29,11 +29,11 @@ jobs:
         run: npm run build
 
       - name: Create zip
-        run: cd dist && zip -r ../tng-extension.zip .
+        run: cd dist && zip -r ../tng.zip .
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          files: tng-extension.zip
+          files: tng.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
