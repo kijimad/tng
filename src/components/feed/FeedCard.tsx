@@ -114,18 +114,6 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
           </SimpleGrid>
         )}
 
-        {data.read.count > 0 && (
-          <Text
-            mt={4}
-            pt={3}
-            borderTopWidth="1px"
-            borderColor="gray.200"
-            fontSize="xs"
-            color="gray.500"
-          >
-            {data.read.count}人が閲覧
-          </Text>
-        )}
       </Card.Body>
     </Card.Root>
   );
