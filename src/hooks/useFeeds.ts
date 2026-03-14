@@ -1,32 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { TunagAPI, TunagAPIError } from "../api/client";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { TunagAPI } from "../api/client";
 import type { Feed, FeedIndex } from "../types";
 
-export type FeedsState = {
-  readonly feeds: readonly Feed[];
-  readonly userName: string;
-  readonly isLoading: boolean;
-  readonly isLoadingMore: boolean;
-  readonly error: string | null;
-  readonly hasMore: boolean;
-};
+// API インスタンスをシングルトンで管理
+let apiInstance: TunagAPI | null = null;
+let apiInitPromise: Promise<TunagAPI> | null = null;
 
-function extractFromIndex(index: FeedIndex, seenIds: Set<number>): Feed[] {
-  const feeds: Feed[] = [];
-
-  for (const item of index) {
-    // インラインフィードのみを使用（個別フェッチは遅いため行わない）
-    if (item.feeds !== undefined) {
-      for (const feed of item.feeds) {
-        if (!seenIds.has(feed.data.id)) {
-          feeds.push(feed);
-          seenIds.add(feed.data.id);
-        }
-      }
-    }
+async function getApi(): Promise<TunagAPI> {
+  if (apiInstance !== null) {
+    return apiInstance;
   }
-
-  return feeds;
+  if (apiInitPromise !== null) {
+    return apiInitPromise;
+  }
+  apiInitPromise = (async () => {
+    const api = new TunagAPI();
+    await api.init();
+    apiInstance = api;
+    return api;
+  })();
+  return apiInitPromise;
 }
 
 interface PaginationInfo {
@@ -34,7 +28,6 @@ interface PaginationInfo {
   groupingId: number | null;
 }
 
-// インデックスからページネーション情報を取得
 function getPaginationFromIndex(index: FeedIndex): PaginationInfo {
   for (let i = index.length - 1; i >= 0; i--) {
     const item = index[i];
@@ -63,133 +56,82 @@ function getPaginationFromIndex(index: FeedIndex): PaginationInfo {
   return { position: null, groupingId: null };
 }
 
-function sortFeedsByDate(feeds: readonly Feed[]): readonly Feed[] {
-  return [...feeds].sort((a, b) => {
-    const dateA = new Date(a.data.created_at).getTime();
-    const dateB = new Date(b.data.created_at).getTime();
-    return dateB - dateA;
+function extractFeedsFromIndex(index: FeedIndex): Feed[] {
+  const feeds: Feed[] = [];
+  for (const item of index) {
+    if (item.feeds !== undefined) {
+      feeds.push(...item.feeds);
+    }
+  }
+  return feeds;
+}
+
+export function useCurrentUser() {
+  return useQuery({
+    queryKey: ["currentUser"],
+    queryFn: async () => {
+      const api = await getApi();
+      return api.getCurrentUser();
+    },
   });
 }
 
-export function useFeeds(): FeedsState & { loadMore: () => void } {
-  const [state, setState] = useState<FeedsState>({
-    feeds: [],
-    userName: "",
-    isLoading: true,
-    isLoadingMore: false,
-    error: null,
-    hasMore: true,
+export function useFeeds() {
+  const query = useInfiniteQuery({
+    queryKey: ["feeds"],
+    queryFn: async ({ pageParam }) => {
+      const api = await getApi();
+      const index = await api.getGroupedFeeds(
+        pageParam?.position ?? undefined,
+        pageParam?.groupingId ?? undefined,
+      );
+      return {
+        index,
+        pagination: getPaginationFromIndex(index),
+      };
+    },
+    initialPageParam: undefined as PaginationInfo | undefined,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.index.length === 0) {
+        return undefined;
+      }
+      return lastPage.pagination.position !== null
+        ? lastPage.pagination
+        : undefined;
+    },
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
   });
 
-  const apiRef = useRef<TunagAPI | null>(null);
-  const isLoadingMoreRef = useRef(false);
-  const hasMoreRef = useRef(true);
-  const seenIdsRef = useRef<Set<number>>(new Set());
-  const paginationRef = useRef<PaginationInfo>({ position: null, groupingId: null });
+  // 全ページからフィードを抽出し、重複を除去（APIの順序を維持）
+  const feeds = useMemo(() => {
+    if (!query.data) return [];
 
-  useEffect(() => {
-    const init = async (): Promise<void> => {
-      try {
-        const api = new TunagAPI();
-        await api.init();
-        apiRef.current = api;
+    const allFeeds: Feed[] = [];
+    const seenIds = new Set<number>();
 
-        const user = await api.getCurrentUser();
-        const index = await api.getGroupedFeeds();
-        const inlineFeeds = extractFromIndex(index, seenIdsRef.current);
-
-        paginationRef.current = getPaginationFromIndex(index);
-        hasMoreRef.current = index.length > 0;
-
-        setState({
-          feeds: sortFeedsByDate(inlineFeeds),
-          userName: user.name,
-          isLoading: false,
-          isLoadingMore: false,
-          error: null,
-          hasMore: hasMoreRef.current,
-        });
-      } catch (err: unknown) {
-        const message =
-          err instanceof TunagAPIError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "不明なエラーが発生しました";
-        setState((prev) => ({
-          ...prev,
-          isLoading: false,
-          error: message,
-        }));
+    for (const page of query.data.pages) {
+      for (const feed of extractFeedsFromIndex(page.index)) {
+        if (!seenIds.has(feed.data.id)) {
+          seenIds.add(feed.data.id);
+          allFeeds.push(feed);
+        }
       }
-    };
-
-    void init();
-  }, []);
-
-  const loadMore = useCallback(() => {
-    if (
-      isLoadingMoreRef.current ||
-      !hasMoreRef.current ||
-      apiRef.current === null ||
-      paginationRef.current.position === null
-    ) {
-      return;
     }
 
-    isLoadingMoreRef.current = true;
-    setState((prev) => ({ ...prev, isLoadingMore: true }));
+    return allFeeds;
+  }, [query.data]);
 
-    const load = async (): Promise<void> => {
-      try {
-        const api = apiRef.current;
-        if (api === null) return;
-
-        const { position, groupingId } = paginationRef.current;
-        const nextIndex = await api.getGroupedFeeds(
-          position ?? undefined,
-          groupingId ?? undefined,
-        );
-
-        if (nextIndex.length === 0) {
-          hasMoreRef.current = false;
-          isLoadingMoreRef.current = false;
-          setState((prev) => ({
-            ...prev,
-            isLoadingMore: false,
-            hasMore: false,
-          }));
-          return;
-        }
-
-        const newFeeds = extractFromIndex(nextIndex, seenIdsRef.current);
-        paginationRef.current = getPaginationFromIndex(nextIndex);
-        isLoadingMoreRef.current = false;
-
-        setState((prev) => ({
-          ...prev,
-          feeds: sortFeedsByDate([...prev.feeds, ...newFeeds]),
-          isLoadingMore: false,
-          hasMore: true,
-        }));
-      } catch (err: unknown) {
-        const message =
-          err instanceof TunagAPIError
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : "追加読み込みに失敗しました";
-        isLoadingMoreRef.current = false;
-        setState((prev) => ({
-          ...prev,
-          isLoadingMore: false,
-          error: message,
-        }));
+  return {
+    feeds,
+    isLoading: query.isLoading,
+    isLoadingMore: query.isFetchingNextPage,
+    error: query.error?.message ?? null,
+    hasMore: query.hasNextPage ?? false,
+    loadMore: () => {
+      if (!query.isFetchingNextPage && query.hasNextPage) {
+        void query.fetchNextPage();
       }
-    };
-
-    void load();
-  }, []);
-
-  return { ...state, loadMore };
+    },
+  };
 }
