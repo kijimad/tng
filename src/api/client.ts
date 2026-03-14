@@ -62,7 +62,10 @@ export class TunagAPI {
     return this.request<CurrentUser>("/current_user");
   }
 
-  async getGroupedFeeds(position?: number, groupingId?: number): Promise<FeedIndex> {
+  async getGroupedFeeds(
+    position?: number,
+    groupingId?: number,
+  ): Promise<FeedIndex> {
     const params = new URLSearchParams();
     if (position !== undefined) {
       params.set("position", position.toString());
@@ -71,7 +74,9 @@ export class TunagAPI {
       params.set("grouping_id", groupingId.toString());
     }
     const query = params.toString();
-    return this.request<FeedIndex>(`/feeds/grouped_index${query ? `?${query}` : ""}`);
+    return this.request<FeedIndex>(
+      `/feeds/grouped_index${query ? `?${query}` : ""}`,
+    );
   }
 
   async getFeed(id: number): Promise<Feed> {
