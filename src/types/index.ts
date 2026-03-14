@@ -103,13 +103,12 @@ export interface FeedGroup {
 export interface GroupedFeedItem {
   readonly grouped: true;
   readonly feed_group: FeedGroup;
+  readonly feeds?: readonly Feed[];
 }
 
 export interface UngroupedFeedItem {
   readonly grouped: false;
-  readonly feed: {
-    readonly id: number;
-  };
+  readonly feeds: readonly Feed[];
 }
 
 export type FeedIndexItem = GroupedFeedItem | UngroupedFeedItem;

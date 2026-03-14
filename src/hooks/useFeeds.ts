@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { TunagAPI, TunagAPIError } from "../api/client";
 import type { Feed, FeedIndex } from "../types";
 
-const FEEDS_PER_PAGE = 5;
-
 export type FeedsState = {
   readonly feeds: readonly Feed[];
   readonly userName: string;
@@ -13,18 +11,56 @@ export type FeedsState = {
   readonly hasMore: boolean;
 };
 
-function extractAllFeedIds(grouped: FeedIndex): number[] {
-  const feedIds: number[] = [];
+function extractFromIndex(index: FeedIndex, seenIds: Set<number>): Feed[] {
+  const feeds: Feed[] = [];
 
-  for (const group of grouped) {
-    if (group.grouped) {
-      feedIds.push(...group.feed_group.feed_ids);
-    } else {
-      feedIds.push(group.feed.id);
+  for (const item of index) {
+    // インラインフィードのみを使用（個別フェッチは遅いため行わない）
+    if (item.feeds !== undefined) {
+      for (const feed of item.feeds) {
+        if (!seenIds.has(feed.data.id)) {
+          feeds.push(feed);
+          seenIds.add(feed.data.id);
+        }
+      }
     }
   }
 
-  return [...new Set(feedIds)];
+  return feeds;
+}
+
+interface PaginationInfo {
+  position: number | null;
+  groupingId: number | null;
+}
+
+// インデックスからページネーション情報を取得
+function getPaginationFromIndex(index: FeedIndex): PaginationInfo {
+  for (let i = index.length - 1; i >= 0; i--) {
+    const item = index[i];
+    if (item === undefined) continue;
+
+    if (item.grouped) {
+      const feedIds = item.feed_group.feed_ids;
+      const lastId = feedIds[feedIds.length - 1];
+      if (lastId !== undefined) {
+        return {
+          position: lastId,
+          groupingId: item.feed_group.first_grouping_id,
+        };
+      }
+    }
+    if (item.feeds !== undefined && item.feeds.length > 0) {
+      const lastFeed = item.feeds[item.feeds.length - 1];
+      if (lastFeed !== undefined) {
+        return {
+          position: lastFeed.data.id,
+          groupingId: null,
+        };
+      }
+    }
+  }
+  return { position: null, groupingId: null };
 }
 
 function sortFeedsByDate(feeds: readonly Feed[]): readonly Feed[] {
@@ -46,10 +82,10 @@ export function useFeeds(): FeedsState & { loadMore: () => void } {
   });
 
   const apiRef = useRef<TunagAPI | null>(null);
-  const allFeedIdsRef = useRef<number[]>([]);
-  const loadedCountRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
+  const seenIdsRef = useRef<Set<number>>(new Set());
+  const paginationRef = useRef<PaginationInfo>({ position: null, groupingId: null });
 
   useEffect(() => {
     const init = async (): Promise<void> => {
@@ -59,17 +95,14 @@ export function useFeeds(): FeedsState & { loadMore: () => void } {
         apiRef.current = api;
 
         const user = await api.getCurrentUser();
-        const grouped = await api.getGroupedFeeds();
-        const feedIds = extractAllFeedIds(grouped);
-        allFeedIdsRef.current = feedIds;
+        const index = await api.getGroupedFeeds();
+        const inlineFeeds = extractFromIndex(index, seenIdsRef.current);
 
-        const initialIds = feedIds.slice(0, FEEDS_PER_PAGE);
-        const feeds = await api.getFeeds(initialIds);
-        loadedCountRef.current = initialIds.length;
-        hasMoreRef.current = feedIds.length > FEEDS_PER_PAGE;
+        paginationRef.current = getPaginationFromIndex(index);
+        hasMoreRef.current = index.length > 0;
 
         setState({
-          feeds: sortFeedsByDate(feeds),
+          feeds: sortFeedsByDate(inlineFeeds),
           userName: user.name,
           isLoading: false,
           isLoadingMore: false,
@@ -98,7 +131,8 @@ export function useFeeds(): FeedsState & { loadMore: () => void } {
     if (
       isLoadingMoreRef.current ||
       !hasMoreRef.current ||
-      apiRef.current === null
+      apiRef.current === null ||
+      paginationRef.current.position === null
     ) {
       return;
     }
@@ -111,13 +145,13 @@ export function useFeeds(): FeedsState & { loadMore: () => void } {
         const api = apiRef.current;
         if (api === null) return;
 
-        const start = loadedCountRef.current;
-        const nextIds = allFeedIdsRef.current.slice(
-          start,
-          start + FEEDS_PER_PAGE,
+        const { position, groupingId } = paginationRef.current;
+        const nextIndex = await api.getGroupedFeeds(
+          position ?? undefined,
+          groupingId ?? undefined,
         );
 
-        if (nextIds.length === 0) {
+        if (nextIndex.length === 0) {
           hasMoreRef.current = false;
           isLoadingMoreRef.current = false;
           setState((prev) => ({
@@ -128,24 +162,16 @@ export function useFeeds(): FeedsState & { loadMore: () => void } {
           return;
         }
 
-        const newFeeds = await api.getFeeds(nextIds);
-        loadedCountRef.current += nextIds.length;
-        hasMoreRef.current =
-          loadedCountRef.current < allFeedIdsRef.current.length;
+        const newFeeds = extractFromIndex(nextIndex, seenIdsRef.current);
+        paginationRef.current = getPaginationFromIndex(nextIndex);
         isLoadingMoreRef.current = false;
 
-        setState((prev) => {
-          const existingIds = new Set(prev.feeds.map((f) => f.data.id));
-          const uniqueNewFeeds = newFeeds.filter(
-            (f) => !existingIds.has(f.data.id),
-          );
-          return {
-            ...prev,
-            feeds: [...prev.feeds, ...sortFeedsByDate(uniqueNewFeeds)],
-            isLoadingMore: false,
-            hasMore: hasMoreRef.current,
-          };
-        });
+        setState((prev) => ({
+          ...prev,
+          feeds: sortFeedsByDate([...prev.feeds, ...newFeeds]),
+          isLoadingMore: false,
+          hasMore: true,
+        }));
       } catch (err: unknown) {
         const message =
           err instanceof TunagAPIError

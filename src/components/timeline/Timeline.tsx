@@ -29,7 +29,7 @@ export function Timeline(): React.ReactElement {
     const lastItem = items[items.length - 1];
     if (lastItem === undefined) return;
 
-    if (lastItem.index >= feeds.length - 1 && hasMore && !isLoadingMore) {
+    if (lastItem.index >= feeds.length - 10 && hasMore && !isLoadingMore) {
       loadMore();
     }
   }, [items, feeds.length, hasMore, isLoadingMore, loadMore]);
