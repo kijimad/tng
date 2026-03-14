@@ -96,13 +96,12 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
         {data.apply !== null && data.apply.images.length > 0 && (
           <SimpleGrid columns={{ base: 2, md: 3 }} gap={2} mt={3}>
             {data.apply.images.map((img, idx) => (
-              <Image
+              <Box
                 key={idx}
-                src={img.thumbnail !== "" ? img.thumbnail : img.image}
-                alt=""
+                height="100px"
                 borderRadius="md"
-                objectFit="cover"
-                maxH="150px"
+                overflow="hidden"
+                bg="gray.200"
                 cursor="pointer"
                 _hover={{ opacity: 0.9 }}
                 onClick={() => {
@@ -110,7 +109,15 @@ export function FeedCard({ feed }: FeedCardProps): React.ReactElement {
                     img.original_image !== "" ? img.original_image : img.image;
                   window.open(url, "_blank");
                 }}
-              />
+              >
+                <Image
+                  src={img.thumbnail !== "" ? img.thumbnail : img.image}
+                  alt=""
+                  width="100%"
+                  height="100%"
+                  objectFit="cover"
+                />
+              </Box>
             ))}
           </SimpleGrid>
         )}
