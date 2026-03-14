@@ -81,6 +81,8 @@ export const system = createSystem(defaultConfig, {
       "& h1, & h2, & h3, & h4, & h5, & h6": {
         fontWeight: "bold",
         marginBottom: "0.5em",
+        borderBottom: "none",
+        paddingBottom: 0,
       },
     },
   },
