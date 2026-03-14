@@ -19,8 +19,7 @@ export function Timeline(): React.ReactElement {
     count: itemCount,
     getScrollElement: () => parentRef.current,
     estimateSize: () => 400,
-    overscan: 3,
-    measureElement: (element) => element.getBoundingClientRect().height,
+    overscan: 5,
   });
 
   const items = virtualizer.getVirtualItems();
@@ -69,32 +68,35 @@ export function Timeline(): React.ReactElement {
           width="100%"
           position="relative"
         >
-          {items.map((virtualItem) => {
-            const isLoaderRow = virtualItem.index >= feeds.length;
-            const feed = feeds[virtualItem.index];
+          <Box
+            position="absolute"
+            top={0}
+            left={0}
+            width="100%"
+            transform={`translateY(${items[0]?.start ?? 0}px)`}
+          >
+            {items.map((virtualItem) => {
+              const isLoaderRow = virtualItem.index >= feeds.length;
+              const feed = feeds[virtualItem.index];
 
-            return (
-              <Box
-                key={virtualItem.key}
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
-                position="absolute"
-                top={0}
-                left={0}
-                width="100%"
-                transform={`translateY(${virtualItem.start}px)`}
-                pb={3}
-              >
-                <Container maxW={CONTENT_WIDTH}>
-                  {isLoaderRow ? (
-                    <FeedCardSkeleton />
-                  ) : feed !== undefined ? (
-                    <FeedCard feed={feed} />
-                  ) : null}
-                </Container>
-              </Box>
-            );
-          })}
+              return (
+                <Box
+                  key={virtualItem.key}
+                  data-index={virtualItem.index}
+                  ref={virtualizer.measureElement}
+                  pb={3}
+                >
+                  <Container maxW={CONTENT_WIDTH}>
+                    {isLoaderRow ? (
+                      <FeedCardSkeleton />
+                    ) : feed !== undefined ? (
+                      <FeedCard feed={feed} />
+                    ) : null}
+                  </Container>
+                </Box>
+              );
+            })}
+          </Box>
         </Box>
       )}
     </Box>
